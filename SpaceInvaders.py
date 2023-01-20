@@ -13,13 +13,13 @@ pygame.display.set_caption("Space Invaders")
 BG_IMG = pygame.transform.scale(pygame.image.load(os.path.join("img","bg.bmp")).convert_alpha(), (1280, 750))
 PLAYER_IMG = pygame.transform.scale(pygame.image.load(os.path.join("img","ship.bmp")).convert_alpha(), (50, 30))
 ALIEN_IMG = pygame.transform.scale(pygame.image.load(os.path.join("img","alien.bmp")).convert_alpha(), (50, 30))
-BARRIER_IMG = pygame.transform.scale(pygame.image.load(os.path.join("img","barrier.bmp")).convert_alpha(), (70, 40))
+BARRIER_IMGS = [pygame.transform.scale(pygame.image.load(os.path.join("img","BarrierDamageModel" + str(x) + ".bmp")).convert_alpha(), (70, 40)) for x in range(0,4)]
 
 PLAYERBULLET_IMG = pygame.Surface((5, 10))
 PLAYERBULLET_IMG.fill((125, 255, 255))
 
 ALIENBULLET_IMG = pygame.Surface((5, 10))
-ALIENBULLET_IMG.fill((255, 255, 255))
+ALIENBULLET_IMG.fill((255, 64, 64))
 
 player_rect = PLAYER_IMG.get_rect(center=(400, 550))
 alien_rect = ALIEN_IMG.get_rect(center=(400, 50))
@@ -33,8 +33,30 @@ class Barrier(GameObject):
     def __init__(self, x, y):
         self.x = x
         self.y = y
-        self.image = BARRIER_IMG
+        self.image = BARRIER_IMGS[0] 
         self.rect = self.image.get_rect(topleft=(x, y))
+        self.health = 4
+        self.alive = True
+
+    def hit(self):
+        if self.health > 0:
+            self.health -= 1
+            self.draw(screen)
+        if self.health == 0:
+            self.alive = False
+
+    def draw(self, screen):
+        if self.health == 4:
+            self.image = BARRIER_IMGS[0]
+        elif self.health == 3:
+            self.image = BARRIER_IMGS[1]
+        elif self.health == 2:
+            self.image = BARRIER_IMGS[2]
+        elif self.health == 1:
+            self.image = BARRIER_IMGS[3]
+        
+        screen.blit(self.image, self.rect)
+    
 
 class PlayerBullet(GameObject):
     def __init__(self, x, y):
@@ -149,7 +171,7 @@ class Alien:
 
 
 player = Player(screen.get_width()/2, screen.get_height()-50)
-covers = [Barrier(150, 550), Barrier(450, 550), Barrier(750, 550), Barrier(1050, 550)]
+barriers = [Barrier(150, 550), Barrier(450, 550), Barrier(750, 550), Barrier(1050, 550)]
 aliens = []
 for i in range(5):
     for j in range(10):
@@ -214,6 +236,11 @@ while running:
         if bullet.rect.colliderect(player.rect):
             player.hit()
             alien.bullets.remove(bullet)
+        if bullet.rect.colliderect(barrier.rect):
+            barrier.hit()
+            alien.bullets.remove(bullet)
+            if not barrier.alive:
+                barriers.remove(barrier)
         if bullet.top < 0:
             player.bullets.remove(bullet)
     
@@ -226,14 +253,17 @@ while running:
             if bullet.rect.colliderect(player.rect):
                 player.hit()
 
-    for cover in covers:
-        screen.blit(cover.image, cover.rect)
+    for barrier in barriers:
+        barrier.draw(screen)
         for bullet in player.bullets:
-            if cover.rect.colliderect(bullet):
+            if barrier.rect.colliderect(bullet):
                 player.bullets.remove(bullet)
         for bullet in alien.bullets:
-            if cover.rect.colliderect(bullet):
+            if barrier.rect.colliderect(bullet):
                 alien.bullets.remove(bullet)
+                barrier.health -= 1
+                if barrier.health == 0:
+                    barrier.alive = False
 
 
     for alien in aliens:
